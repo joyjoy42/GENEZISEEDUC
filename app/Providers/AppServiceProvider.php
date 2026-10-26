@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Supabase\StockageMedias;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -14,7 +15,11 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->singleton(StockageMedias::class, fn () => new StockageMedias(
+            (string) config('supabase.url'),
+            (string) config('supabase.secret_key'),
+            (string) config('supabase.storage.bucket_interviews'),
+        ));
     }
 
     public function boot(): void

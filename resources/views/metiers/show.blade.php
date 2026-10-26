@@ -180,7 +180,10 @@
                                             Voir l&rsquo;interview @if ($temoignage->plateforme) sur {{ ucfirst($temoignage->plateforme) }} @endif
                                         </a>
                                     @elseif ($temoignage->fichier_video)
-                                        <span class="text-gris">Vidéo à publier : {{ $temoignage->fichier_video }}</span>
+                                        {{-- Le rush reste dans le coffre privé : on annonce la vidéo sans
+                                             livrer son chemin, et sans lien de lecture tant qu'elle n'est pas
+                                             publiée sur un réseau. --}}
+                                        <span class="text-gris">Vidéo en cours de montage.</span>
                                     @endif
                                 </div>
                             </li>

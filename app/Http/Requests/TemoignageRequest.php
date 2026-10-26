@@ -27,6 +27,12 @@ class TemoignageRequest extends FormRequest
             'video_url' => ['nullable', 'url', 'max:255'],
             'plateforme' => ['nullable', Rule::in(['tiktok', 'instagram', 'youtube'])],
             'fichier_video' => ['nullable', 'string', 'max:255'],
+            // 500 Mo : la limite du bucket Supabase. Les types sont lus dans
+            // le contenu du fichier, pas dans son extension.
+            'media' => [
+                'nullable', 'file', 'max:512000',
+                'mimetypes:video/mp4,video/quicktime,video/x-matroska,audio/mpeg,audio/mp4,audio/x-m4a,audio/ogg,image/jpeg,image/png',
+            ],
             'duree_secondes' => ['nullable', 'integer', 'min:1', 'max:36000'],
             'date_interview' => ['nullable', 'date'],
             'est_publie' => ['boolean'],
@@ -51,6 +57,7 @@ class TemoignageRequest extends FormRequest
             'nom' => 'nom du professionnel',
             'video_url' => 'lien de la vidéo',
             'fichier_video' => 'fichier vidéo',
+            'media' => 'média de l\'interview',
             'duree_secondes' => 'durée en secondes',
             'date_interview' => 'date de l\'interview',
         ];

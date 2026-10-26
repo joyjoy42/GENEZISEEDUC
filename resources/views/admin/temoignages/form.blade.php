@@ -18,6 +18,7 @@
     @else
         <form method="POST"
               action="{{ $temoignage->exists ? route('admin.temoignages.update', $temoignage) : route('admin.temoignages.store') }}"
+              enctype="multipart/form-data"
               class="mt-8 max-w-3xl space-y-10">
             @csrf
             @if ($temoignage->exists)
@@ -77,10 +78,29 @@
                 </x-champ>
 
                 <div class="grid gap-6 sm:grid-cols-2">
-                    <x-champ nom="fichier_video" label="Fichier vidéo local" :valeur="$temoignage->fichier_video"
-                             aide="Le chemin du rush, tant que la vidéo n'est pas publiée." />
+                    <x-champ nom="media" label="Rush à envoyer" type="file"
+                             aide="Vidéo, note vocale ou photo. 500 Mo au maximum. Le fichier part dans le coffre privé Supabase : il n'est lisible que par un lien qui expire." />
                     <x-champ nom="duree_secondes" label="Durée en secondes" type="number" :valeur="$temoignage->duree_secondes" />
                 </div>
+
+                @if ($temoignage->fichier_video)
+                    <div class="rounded-xl border border-bord bg-carte p-4 text-sm">
+                        <p class="font-semibold text-nuit">Média déjà envoyé</p>
+                        <p class="mt-1 break-all text-gris">{{ $temoignage->fichier_video }}</p>
+                        @if ($lienMedia)
+                            <a href="{{ $lienMedia }}" target="_blank" rel="noopener noreferrer"
+                               class="mt-2 inline-block font-semibold text-rouille underline hover:no-underline">
+                                Ouvrir le média (lien valable une heure)
+                            </a>
+                        @else
+                            <p class="mt-2 text-gris">
+                                Pas de lien de lecture : ce chemin ne correspond à aucun fichier du coffre,
+                                ou la clé Supabase manque.
+                            </p>
+                        @endif
+                        <p class="mt-2 text-gris">Envoyer un nouveau fichier remplacera celui-ci.</p>
+                    </div>
+                @endif
 
                 <x-champ nom="date_interview" label="Date de l'interview" type="date"
                          :valeur="$temoignage->date_interview?->format('Y-m-d')" />
