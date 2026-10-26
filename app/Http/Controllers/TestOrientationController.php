@@ -45,7 +45,11 @@ class TestOrientationController extends Controller
         $reponses = $request->validated()['reponses'];
 
         $profil = Profil::depuisReponses($reponses, $questions);
-        $resultat = ResultatTest::enregistrer($profil, count($reponses));
+        $resultat = ResultatTest::enregistrer($profil, count($reponses), $request->user('eleve'));
+
+        // Pour que le résultat suive si l'élève crée son compte juste après :
+        // sans ça il le perdrait au moment même où il s'inscrit pour le garder.
+        $request->session()->put('dernier_resultat', $resultat->jeton);
 
         return redirect()->route('test.resultat', $resultat);
     }

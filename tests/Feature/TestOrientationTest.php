@@ -349,6 +349,12 @@ class TestOrientationTest extends TestCase
         $this->get(route('test.resultat', 'jeton-qui-nexiste-pas'))->assertNotFound();
     }
 
+    /**
+     * Un test passé sans compte ne laisse ni nom, ni adresse, ni adresse IP.
+     *
+     * `eleve_id` existe depuis les comptes élèves, mais il reste vide tant
+     * que personne n'a choisi de rattacher son résultat.
+     */
     public function test_le_resultat_ne_conserve_aucune_donnee_personnelle(): void
     {
         $questions = $this->questionnaire();
@@ -357,13 +363,15 @@ class TestOrientationTest extends TestCase
             'reponses' => $this->reponses($questions, Dimension::Entreprenant),
         ]);
 
-        $colonnes = array_keys(ResultatTest::sole()->getAttributes());
+        $resultat = ResultatTest::sole();
 
         $this->assertSame([
             'id', 'jeton',
             'score_realiste', 'score_investigateur', 'score_artistique',
             'score_social', 'score_entreprenant', 'score_conventionnel',
-            'nombre_reponses', 'created_at', 'updated_at',
-        ], $colonnes);
+            'nombre_reponses', 'created_at', 'updated_at', 'eleve_id',
+        ], array_keys($resultat->getAttributes()));
+
+        $this->assertNull($resultat->eleve_id);
     }
 }

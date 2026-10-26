@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Eleve;
 use App\Models\User;
 
 return [
@@ -42,6 +43,13 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // Les eleves ont leur propre garde : une session eleve ne doit jamais
+        // satisfaire le middleware `auth` qui protege le back-office.
+        'eleve' => [
+            'driver' => 'session',
+            'provider' => 'eleves',
+        ],
     ],
 
     /*
@@ -65,6 +73,11 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
+        ],
+
+        'eleves' => [
+            'driver' => 'eloquent',
+            'model' => Eleve::class,
         ],
 
         // 'users' => [

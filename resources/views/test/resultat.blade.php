@@ -186,6 +186,15 @@
                     Refaire le test
                 </a>
             </div>
+
+            @guest('eleve')
+                <p class="mt-6 border-t border-bord pt-6 text-sm text-encre">
+                    <strong class="font-semibold text-nuit">Garde cette page.</strong>
+                    Son adresse est la seule façon d&rsquo;y revenir. Mets-la en favori, ou
+                    <a href="{{ route('eleves.inscription') }}" class="font-semibold text-nuit underline hover:no-underline">crée un compte</a>
+                    pour la retrouver depuis n&rsquo;importe quel téléphone.
+                </p>
+            @endguest
         </section>
 
     </div>

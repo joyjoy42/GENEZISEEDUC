@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Supabase\ComptesEleves;
 use App\Supabase\StockageMedias;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +16,11 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(ComptesEleves::class, fn () => new ComptesEleves(
+            (string) config('supabase.url'),
+            (string) config('supabase.secret_key'),
+        ));
+
         $this->app->singleton(StockageMedias::class, fn () => new StockageMedias(
             (string) config('supabase.url'),
             (string) config('supabase.secret_key'),

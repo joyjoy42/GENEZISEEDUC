@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\QuestionController as AdminQuestionController;
 use App\Http\Controllers\Admin\SecteurController as AdminSecteurController;
 use App\Http\Controllers\Admin\TableauBordController;
 use App\Http\Controllers\Admin\TemoignageController as AdminTemoignageController;
+use App\Http\Controllers\CompteEleveController;
 use App\Http\Controllers\ConnexionController;
 use App\Http\Controllers\MetierController;
 use App\Http\Controllers\SecteurController;
@@ -35,6 +36,27 @@ Route::post('/test', [TestOrientationController::class, 'calculer'])
 Route::get('/test/resultat/{resultat}', [TestOrientationController::class, 'resultat'])->name('test.resultat');
 
 /*
+ * Les comptes élèves : garder ses résultats de test et les retrouver.
+ * Garde séparé de celui de l'équipe : une session élève n'ouvre pas /admin.
+ */
+Route::middleware('guest:eleve')->group(function () {
+    Route::get('/inscription', [CompteEleveController::class, 'formulaireInscription'])->name('eleves.inscription');
+    Route::post('/inscription', [CompteEleveController::class, 'inscrire'])
+        ->middleware('throttle:connexion')
+        ->name('eleves.inscrire');
+
+    Route::get('/mon-compte', [CompteEleveController::class, 'formulaireConnexion'])->name('eleves.connexion');
+    Route::post('/mon-compte', [CompteEleveController::class, 'connecter'])
+        ->middleware('throttle:connexion')
+        ->name('eleves.connecter');
+});
+
+Route::middleware('auth:eleve')->group(function () {
+    Route::get('/mon-suivi', [CompteEleveController::class, 'suivi'])->name('eleves.suivi');
+    Route::post('/mon-compte/deconnexion', [CompteEleveController::class, 'deconnecter'])->name('eleves.deconnexion');
+});
+
+/*
  * La connexion de l'équipe. Pas d'inscription : les comptes sont créés
  * en ligne de commande avec `php artisan genezise:administrateur`.
  */
@@ -46,13 +68,13 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::post('/deconnexion', [ConnexionController::class, 'deconnecter'])
-    ->middleware('auth')
+    ->middleware('auth:web')
     ->name('deconnexion');
 
 /*
  * Le back-office : saisie du contenu de la bibliothèque.
  */
-Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
+Route::middleware('auth:web')->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', TableauBordController::class)->name('tableau-bord');
 
     Route::resource('metiers', AdminMetierController::class)->except('show');

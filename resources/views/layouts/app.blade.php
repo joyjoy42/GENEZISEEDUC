@@ -46,6 +46,17 @@
                 Le test
             </a>
 
+            @auth('eleve')
+                <a href="{{ route('eleves.suivi') }}"
+                   @class([
+                       'ml-2 rounded-lg px-3 py-2 transition hover:bg-creme hover:text-nuit',
+                       'bg-creme text-nuit' => request()->routeIs('eleves.*'),
+                       'text-encre' => ! request()->routeIs('eleves.*'),
+                   ])>
+                    Mon suivi
+                </a>
+            @endauth
+
             @auth
                 <a href="{{ route('admin.tableau-bord') }}"
                    class="ml-2 rounded-lg bg-nuit px-3 py-2 text-creme transition hover:bg-nuit/90">
