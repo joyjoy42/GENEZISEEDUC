@@ -54,6 +54,8 @@ Route::middleware('guest:eleve')->group(function () {
 Route::middleware('auth:eleve')->group(function () {
     Route::get('/mon-suivi', [CompteEleveController::class, 'suivi'])->name('eleves.suivi');
     Route::post('/mon-compte/deconnexion', [CompteEleveController::class, 'deconnecter'])->name('eleves.deconnexion');
+    Route::get('/mon-compte/suppression', [CompteEleveController::class, 'confirmationSuppression'])->name('eleves.suppression');
+    Route::delete('/mon-compte', [CompteEleveController::class, 'supprimer'])->name('eleves.supprimer');
 });
 
 /*

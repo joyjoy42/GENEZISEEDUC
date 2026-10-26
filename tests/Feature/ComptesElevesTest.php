@@ -149,6 +149,53 @@ class ComptesElevesTest extends TestCase
             ->assertRedirect(route('login'));
     }
 
+    public function test_une_eleve_supprime_son_compte(): void
+    {
+        Http::fake(['projet.supabase.co/auth/v1/admin/users/*' => Http::response('', 200)]);
+
+        $eleve = Eleve::factory()->create();
+        $resultat = ResultatTest::factory()->create(['eleve_id' => $eleve->id]);
+
+        $this->actingAs($eleve, 'eleve')
+            ->delete(route('eleves.supprimer'))
+            ->assertRedirect(route('accueil'));
+
+        $this->assertSame(0, Eleve::count());
+        $this->assertGuest('eleve');
+
+        // Le résultat survit, mais redevient anonyme : c'est ce qu'il était
+        // avant la création du compte.
+        $this->assertNull($resultat->refresh()->eleve_id);
+
+        Http::assertSent(fn ($requete) => $requete->method() === 'DELETE'
+            && str_ends_with($requete->url(), '/auth/v1/admin/users/'.$eleve->supabase_id));
+    }
+
+    /**
+     * Si Supabase refuse, on ne touche à rien ici : sinon l'adresse resterait
+     * prise chez Supabase par un compte que plus personne ne peut atteindre.
+     */
+    public function test_un_echec_cote_supabase_laisse_le_compte_intact(): void
+    {
+        Http::fake(['projet.supabase.co/auth/v1/admin/users/*' => Http::response('nope', 500)]);
+
+        $eleve = Eleve::factory()->create();
+
+        $this->actingAs($eleve, 'eleve')
+            ->from(route('eleves.suppression'))
+            ->delete(route('eleves.supprimer'))
+            ->assertRedirect(route('eleves.suppression'))
+            ->assertSessionHasErrors('suppression');
+
+        $this->assertSame(1, Eleve::count());
+        $this->assertAuthenticatedAs($eleve->fresh(), 'eleve');
+    }
+
+    public function test_la_suppression_est_fermee_aux_visiteurs(): void
+    {
+        $this->delete(route('eleves.supprimer'))->assertRedirect(route('login'));
+    }
+
     public function test_le_suivi_est_ferme_aux_visiteurs(): void
     {
         $this->get(route('eleves.suivi'))->assertRedirect(route('login'));

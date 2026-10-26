@@ -52,6 +52,12 @@
             </p>
         @endif
 
+        <p class="mt-12 border-t border-bord pt-6 text-sm text-gris">
+            <a href="{{ route('eleves.suppression') }}" class="underline hover:no-underline">
+                Supprimer mon compte
+            </a>
+        </p>
+
     </div>
 
 @endsection

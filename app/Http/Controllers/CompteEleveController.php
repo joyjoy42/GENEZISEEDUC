@@ -105,6 +105,41 @@ class CompteEleveController extends Controller
         ]);
     }
 
+    public function confirmationSuppression(): View
+    {
+        return view('eleves.suppression');
+    }
+
+    /**
+     * Efface le compte, chez Supabase puis ici.
+     *
+     * Dans cet ordre : si Supabase refuse, rien n'est perdu et l'élève peut
+     * réessayer. L'inverse laisserait un compte fantôme chez Supabase, avec
+     * une adresse prise que personne ne pourrait plus réutiliser.
+     *
+     * Les résultats de test, eux, ne sont pas supprimés : ils redeviennent
+     * anonymes, c'est-à-dire ce qu'ils étaient avant la création du compte.
+     */
+    public function supprimer(Request $request): RedirectResponse
+    {
+        $eleve = $request->user('eleve');
+
+        if (! $this->comptes->supprime($eleve->supabase_id)) {
+            return back()->withErrors([
+                'suppression' => 'La suppression a échoué. Ton compte est intact : réessaie dans un moment.',
+            ]);
+        }
+
+        Auth::guard('eleve')->logout();
+        $eleve->delete();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('accueil')
+            ->with('succes', 'Ton compte est supprimé. Tes résultats de test restent anonymes.');
+    }
+
     private function ouvreLaSession(Request $request, Eleve $eleve): RedirectResponse
     {
         Auth::guard('eleve')->login($eleve, remember: true);
