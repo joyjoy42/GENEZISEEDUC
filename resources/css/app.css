@@ -1,0 +1,22 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme {
+    --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+
+    /* Palette GENEZISE, reprise du pitch 2026 */
+    --color-nuit: #1b1f3b;
+    --color-creme: #f7f3ec;
+    --color-carte: #fffdf8;
+    --color-bord: #e4ddd0;
+    --color-mandarine: #e8743b;
+    --color-rouille: #b5481a;
+    --color-vert: #2e7d6e;
+    --color-encre: #3e4466;
+    --color-gris: #6b7090;
+    --color-sable: #f2e3d3;
+}
