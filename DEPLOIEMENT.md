@@ -49,12 +49,44 @@ Connecte-toi en SSH, puis :
 ```bash
 apt update && apt upgrade -y
 apt install -y nginx git unzip curl \
-    php8.3-fpm php8.3-cli php8.3-sqlite3 php8.3-mbstring \
+    php8.3-fpm php8.3-cli php8.3-pgsql php8.3-sqlite3 php8.3-mbstring \
     php8.3-xml php8.3-curl php8.3-intl php8.3-zip php8.3-bcmath
 ```
 
 L'application demande **PHP 8.3 minimum** : pas besoin de PHP 8.5 comme sur ta
 machine, la version des dépôts Ubuntu convient.
+
+`php8.3-pgsql` fournit `pdo_pgsql`, sans quoi l'application ne joint pas la
+base Supabase. Vérifie-le avant d'aller plus loin :
+
+```bash
+php -m | grep -E '^(pdo_pgsql|curl|mbstring)$'
+```
+
+### Les trois réglages PHP à aligner
+
+Dans `/etc/php/8.3/fpm/php.ini` **et** `/etc/php/8.3/cli/php.ini` — le premier
+sert aux pages, le second à `php artisan` :
+
+| Réglage | Valeur | Pourquoi |
+| --- | --- | --- |
+| `upload_max_filesize` | `512M` | La limite du bucket Supabase. PHP est à 2M par défaut : aucun rush d'interview ne passerait. |
+| `post_max_size` | `520M` | Toujours au-dessus du précédent : il porte le fichier **et** le reste du formulaire. |
+| `memory_limit` | `256M` | L'envoi se fait en flux, mais le reste de l'application respire mieux. |
+
+```bash
+sed -i -E 's/^upload_max_filesize = .*/upload_max_filesize = 512M/; s/^post_max_size = .*/post_max_size = 520M/; s/^memory_limit = .*/memory_limit = 256M/' \
+    /etc/php/8.3/fpm/php.ini /etc/php/8.3/cli/php.ini
+systemctl restart php8.3-fpm
+```
+
+Nginx a sa propre limite, plus basse que celle de PHP : elle se règle en
+section 6. Les deux doivent monter ensemble, sinon Nginx coupe l'envoi avant
+que PHP le voie.
+
+Les certificats TLS n'ont rien à régler ici : Ubuntu fournit `ca-certificates`
+et PHP s'en sert. C'est un problème propre à Windows, où il faut désigner un
+fichier à `curl.cainfo`.
 
 Composer et Node :
 
@@ -132,7 +164,9 @@ server {
     index index.php;
     charset utf-8;
 
-    client_max_body_size 8M;
+    # Doit rester au-dessus de post_max_size (section 3), sinon Nginx refuse
+    # l'envoi d'un rush avant que PHP le voie.
+    client_max_body_size 520M;
 
     location / {
         try_files $uri $uri/ /index.php?$query_string;
@@ -197,6 +231,12 @@ Puis, depuis ta machine :
   d'erreur Laravel. Si tu vois une trace, `APP_DEBUG` n'est pas à `false`.
 
 ## 9. Sauvegarder
+
+> **Obsolète depuis le 26 octobre 2026.** Les données sont désormais dans
+> Supabase, qui sauvegarde lui-même, et les médias dans son coffre. La
+> sauvegarde SQLite ci-dessous ne copierait plus qu'un fichier vide — et te
+> ferait croire tes données à l'abri. Les étapes SQLite de la section 4 sont
+> à ignorer de la même façon. Section à réécrire.
 
 Toute la plateforme tient dans un fichier. Une sauvegarde quotidienne hors du
 serveur suffit — un serveur qui meurt emporte ses sauvegardes locales.
