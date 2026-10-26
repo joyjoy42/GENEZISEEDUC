@@ -2,6 +2,7 @@
 
 namespace App\Supabase;
 
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -48,7 +49,7 @@ class StockageMedias
         // par la mémoire de PHP.
         $flux = fopen($fichier->getRealPath(), 'rb');
 
-        $reponse = Http::withToken($this->cleSecrete)
+        $reponse = $this->requete()
             ->withHeaders([
                 'Content-Type' => $fichier->getMimeType() ?: 'application/octet-stream',
                 'x-upsert' => 'true',
@@ -79,7 +80,7 @@ class StockageMedias
             return null;
         }
 
-        $reponse = Http::withToken($this->cleSecrete)
+        $reponse = $this->requete()
             ->post($this->pointDAcces('object/sign/'.$this->bucket.'/'.$chemin), [
                 'expiresIn' => $secondes,
             ]);
@@ -102,9 +103,23 @@ class StockageMedias
             return false;
         }
 
-        return Http::withToken($this->cleSecrete)
+        return $this->requete()
             ->delete($this->pointDAcces('object/'.$this->bucket.'/'.$chemin))
             ->successful();
+    }
+
+    /**
+     * Une clé `sb_secret_…` n'est pas un JWT : Storage la refuse en
+     * Authorization seul (« Invalid Compact JWS ») et attend l'en-tête
+     * `apikey`. On envoie les deux, ce qui marche aussi avec une ancienne
+     * clé `service_role`.
+     */
+    private function requete(): PendingRequest
+    {
+        return Http::withHeaders([
+            'apikey' => $this->cleSecrete,
+            'Authorization' => 'Bearer '.$this->cleSecrete,
+        ]);
     }
 
     /**

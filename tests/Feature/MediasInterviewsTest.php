@@ -65,9 +65,12 @@ class MediasInterviewsTest extends TestCase
             $temoignage->fichier_video
         );
 
+        // L'en-tête `apikey` n'est pas décoratif : sans lui, Storage refuse une
+        // clé sb_secret_… avec « Invalid Compact JWS ».
         Http::assertSent(fn (Request $requete) => $requete->method() === 'POST'
             && $requete->url() === 'https://projet.supabase.co/storage/v1/object/interviews/'.$temoignage->fichier_video
-            && $requete->hasHeader('x-upsert', 'true'));
+            && $requete->hasHeader('x-upsert', 'true')
+            && $requete->hasHeader('apikey', 'cle-de-test'));
     }
 
     /**
