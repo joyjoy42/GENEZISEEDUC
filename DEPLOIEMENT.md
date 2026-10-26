@@ -105,31 +105,44 @@ ufw allow OpenSSH && ufw allow 'Nginx Full' && ufw enable
 
 ```bash
 mkdir -p /var/www && cd /var/www
-git clone git@github.com:TON-COMPTE/genezise-orientation.git genezise
+git clone https://github.com/joyjoy42/GENEZISEEDUC.git genezise
 cd genezise
 
 composer install --no-dev --optimize-autoloader
 npm ci && npm run build
 
 cp .env.production.example .env
-nano .env          # renseigne APP_URL et le chemin absolu de la base
+nano .env          # APP_URL, les clés DB_* et SUPABASE_* (tableau de bord Supabase)
 php artisan key:generate
 ```
 
-Crée la base et applique les migrations :
+Vérifie que le serveur joint bien la base avant d'aller plus loin :
 
 ```bash
-touch database/database.sqlite
-php artisan migrate --force
+php artisan db:show
+```
+
+**La base est partagée, pas installée ici.** Elle vit dans Supabase : les
+migrations et le questionnaire y ont déjà été joués depuis la machine de
+développement. Il n'y a donc **ni fichier de base à créer, ni seeder à
+relancer** sur le serveur.
+
+```bash
+php artisan migrate --force      # ne fait rien si tout est déjà appliqué
+```
+
+Si c'est un tout premier déploiement sur une base Supabase vide, ajoute le
+questionnaire — sans lui le test d'orientation ne fonctionne pas :
+
+```bash
 php artisan db:seed --class=QuestionnaireSeeder --force
 ```
 
-Le `QuestionnaireSeeder` installe les 24 questions du test : sans lui, le test
-ne peut pas fonctionner. Le `BibliothequeSeeder`, lui, contient du contenu de
-démonstration avec des passages entre crochets — **ne le lance pas en
-production**, saisis tes vraies fiches depuis le back-office.
+Le `BibliothequeSeeder`, lui, contient du contenu de démonstration avec des
+passages entre crochets — **ne le lance pas en production**, saisis tes vraies
+fiches depuis le back-office.
 
-Crée ton compte :
+Crée ton compte, si tu n'en as pas déjà un dans la base partagée :
 
 ```bash
 php artisan genezise:administrateur "Joy AKODEKOU" ton-email@exemple.com
@@ -139,14 +152,13 @@ Le mot de passe généré ne s'affiche qu'une fois. Note-le tout de suite.
 
 ## 5. Les permissions
 
-Nginx et PHP tournent sous `www-data`. Il leur faut l'écriture sur trois
-endroits, et **le dossier** de la base, pas seulement le fichier — SQLite y
-écrit aussi les fichiers `-wal` et `-shm` :
+Nginx et PHP tournent sous `www-data`. Il leur faut l'écriture sur le
+stockage et le cache. La base est chez Supabase : plus aucun fichier de
+données à protéger ici.
 
 ```bash
 chown -R www-data:www-data /var/www/genezise/storage \
-                           /var/www/genezise/bootstrap/cache \
-                           /var/www/genezise/database
+                           /var/www/genezise/bootstrap/cache
 chmod -R 775 /var/www/genezise/storage /var/www/genezise/bootstrap/cache
 ```
 
@@ -232,26 +244,67 @@ Puis, depuis ta machine :
 
 ## 9. Sauvegarder
 
-> **Obsolète depuis le 26 octobre 2026.** Les données sont désormais dans
-> Supabase, qui sauvegarde lui-même, et les médias dans son coffre. La
-> sauvegarde SQLite ci-dessous ne copierait plus qu'un fichier vide — et te
-> ferait croire tes données à l'abri. Les étapes SQLite de la section 4 sont
-> à ignorer de la même façon. Section à réécrire.
+Les données sont dans Supabase, les médias dans son coffre. Rien d'important
+ne vit plus sur le serveur : c'est le projet Supabase qu'il faut sauvegarder.
 
-Toute la plateforme tient dans un fichier. Une sauvegarde quotidienne hors du
-serveur suffit — un serveur qui meurt emporte ses sauvegardes locales.
+> **Le projet est au plan gratuit, qui ne fait aucune sauvegarde automatique.**
+> Les sauvegardes quotidiennes commencent au plan Pro. Tant que tu restes au
+> plan gratuit, la seule copie de ta base est celle que tu fabriques
+> toi-même. Ne saute pas cette section.
+
+### La base
+
+`pg_dump` depuis le serveur, une fois par jour. Il faut la version 17, celle
+du Postgres de Supabase : la 16 livrée par Ubuntu refuse de lire une base plus
+récente.
+
+```bash
+install -d /usr/share/postgresql-common/pgdg
+curl -fo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \n    https://www.postgresql.org/media/keys/ACCC4CF8.asc
+echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \n    > /etc/apt/sources.list.d/pgdg.list
+apt update && apt install -y postgresql-client-17
+```
+
+Le mot de passe va dans `~/.pgpass`, pas dans la ligne de commande : tout le
+monde peut lire `crontab -l` et la liste des processus.
+
+```bash
+echo 'aws-0-eu-west-1.pooler.supabase.com:5432:postgres:postgres.piaqxuxnlsdedffhahtc:TON-MOT-DE-PASSE' > ~/.pgpass
+chmod 600 ~/.pgpass
+```
 
 `crontab -e` :
 
 ```cron
-0 2 * * * sqlite3 /var/www/genezise/database/database.sqlite ".backup '/var/backups/genezise-$(date +\%F).sqlite'"
+0 2 * * * pg_dump -h aws-0-eu-west-1.pooler.supabase.com -p 5432 -U postgres.piaqxuxnlsdedffhahtc -d postgres -Fc -f /var/backups/genezise-$(date +\%F).dump
+0 3 * * * find /var/backups -name 'genezise-*.dump' -mtime +30 -delete
 ```
 
-`.backup` plutôt que `cp` : en WAL, copier le fichier pendant une écriture
-donne une sauvegarde corrompue. Installe `sqlite3` (`apt install sqlite3`) et
-récupère ces fichiers ailleurs (ton ordinateur, un stockage objet).
+Le format `-Fc` se restaure avec `pg_restore`, table par table si besoin :
 
-Teste une restauration **avant** d'en avoir besoin.
+```bash
+pg_restore -h ... -U ... -d postgres --clean --if-exists genezise-2026-10-26.dump
+```
+
+### Les médias
+
+`pg_dump` ne copie **pas** le contenu du coffre : il n'en sauvegarde que la
+liste. Les rushes d'interviews, eux, n'existent qu'à un seul endroit. Ce sont
+des fichiers que tu as déjà sur ton ordinateur au montage — garde-les, c'est
+aujourd'hui ta seule copie de secours.
+
+### Les deux règles qui comptent
+
+Sors les fichiers du serveur : un serveur qui meurt emporte ses sauvegardes
+locales. Et teste une restauration **avant** d'en avoir besoin — une
+sauvegarde jamais restaurée n'est pas une sauvegarde.
+
+### Un piège du plan gratuit
+
+Un projet Supabase gratuit est mis en pause après une semaine sans activité,
+et le site tombe avec lui. Tant que la plateforme n'a pas de visiteurs
+réguliers, ouvre-la de temps en temps, ou passe au plan Pro avant la mise en
+ligne publique.
 
 ---
 
@@ -280,8 +333,7 @@ git update-index --chmod=+x deploy.sh
 - **Content-Security-Policy.** Pas posée : les styles sont en attributs
   `style="…"` et le back-office utilise des `onsubmit` en ligne. Il faudra
   d'abord sortir ce code des pages.
-- **Passer à MySQL ou PostgreSQL.** Inutile aujourd'hui : SQLite en mode WAL
-  tient très largement le trafic d'un lancement, et se sauvegarde en un
-  fichier. Le jour où plusieurs personnes écriront en continu, c'est un
-  changement de configuration, pas de code.
+- **Passer au plan Pro de Supabase.** Le plan gratuit ne sauvegarde pas et met
+  le projet en pause après une semaine sans activité (section 9). À trancher
+  avant d'annoncer la plateforme publiquement.
 - **Supprimer le compte `test@genezise.local`** s'il a été créé sur ce serveur.
